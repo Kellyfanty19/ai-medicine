@@ -1,0 +1,59 @@
+AI-medicine
+Тремор по камере
+Распознавание дефектов речи
+Речь: остановки, заикание, слова-паразиты
+на паралич лицевого нерва(на инсульт)
+
+сайт где ИИ-ассистент собирает данные с личного кабинета пользователя на сайте(прописка, участок, возраст, описанные симптомы, ИИН){медицинская карта}. дополнительная идея: сделать карту на сайте с ближайшими поликлиниками.
+
+Стек: SQLite, React, Go, Javascript, Typescript
+
+структура Django-проекта:
+
+med_project/                  # Корневая папка проекта
+│
+├── manage.py                 # Главный скрипт управления Django
+│
+├── med_project/              # Папка с настройками самого проекта
+│   ├── __init__.py
+│   ├── settings.py           # Тут подключаем SQLite, DRF и прописываем настройки
+│   ├── urls.py               # Главный маршрутизатор (связывает приложения)
+│   └── wsgi.py
+│
+└── api/                      # Твое Django-приложение, которое обрабатывает весь бэк
+    ├── __init__.py
+    ├── admin.py              # ТУТ: регистрируем модели, чтобы они появились в панели Админа
+    ├── apps.py
+    ├── models.py             # ТУТ: описываем таблицы (User, Doctor, Clinic, Symptom)
+    ├── serializers.py        # ТУТ: переводим данные из базы в JSON для фронтенда
+    ├── views.py              # ТУТ: логика (обработка ролей, запрос к Groq API)
+    ├── urls.py               # Маршруты для фронтенда (например, /api/login/, /api/ai-assistant/)
+    └── migrations/           # Папка со слепками базы данных (Django создает сам)
+
+
+запуск сервера:
+cd C:\Users\Asus\Downloads\code-navcevce\practice\ai-medicine\backend
+py -3 manage.py runserver 127.0.0.1:8000
+
+окружение:
+OS: Windows
+Python launcher: C:\Windows\py.exe
+Python: 3.11.9
+Python exe: C:\Users\Asus\AppData\Local\Programs\Python\Python311\python.exe
+Django: 5.2.15
+SQLite module inside Python: 3.45.1
+sqlite3.exe in PATH: нет
+
+зависимости которые установлены:
+Django 5.2.15
+django-cors-headers 4.9.0
+psycopg2-binary 2.9.11
+PyYAML 6.0.3
+
+зайти в базу данных:
+cd C:\Users\Asus\Downloads\code-navcevce\practice\ai-medicine\backend
+py -3 manage.py shell
+from med_project.api.models import MedicalUser
+MedicalUser.objects.all()
+посмотреть = .values()
+почистить = .delete()

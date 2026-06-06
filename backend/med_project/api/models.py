@@ -26,6 +26,7 @@ class MedicalUser(models.Model):
 
     # Поля для Врача
     specialization = models.CharField(max_length=150, blank=True, null=True)
+    category = models.CharField(max_length=100, blank=True, null=True)
     experience = models.CharField(max_length=20, blank=True, null=True)
     workplace = models.CharField(max_length=150, blank=True, null=True)
     schedule = models.CharField(max_length=100, blank=True, null=True)
@@ -33,6 +34,10 @@ class MedicalUser(models.Model):
     # Поля для Администратора
     institution = models.CharField(max_length=150, blank=True, null=True)
     address = models.CharField(max_length=250, blank=True, null=True)
+    admin_name = models.CharField(max_length=150, blank=True, null=True)
+    total_patients = models.CharField(max_length=20, blank=True, null=True)
+    active_doctors = models.CharField(max_length=20, blank=True, null=True)
+    active_districts = models.CharField(max_length=20, blank=True, null=True)
 
     def __str__(self):
         return f"{self.get_role_display()} - {self.name}"

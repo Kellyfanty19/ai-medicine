@@ -8,6 +8,18 @@ from django.views.decorators.csrf import csrf_exempt
 from .models import MedicalUser
 
 
+ROLE_NAMES = {
+    "patient": "Пациент",
+    "doctor": "Врач",
+    "admin": "Администратор",
+}
+
+DEFAULT_NAMES = {
+    "patient": "Новый пациент",
+    "doctor": "Новый врач",
+    "admin": "Новый администратор",
+}
+
 PATIENT_PROFILE_FIELDS = {
     "name": "name",
     "birthDate": "birth_date",
@@ -20,6 +32,34 @@ PATIENT_PROFILE_FIELDS = {
     "chronic": "chronic",
 }
 
+DOCTOR_PROFILE_FIELDS = {
+    "name": "name",
+    "specialization": "specialization",
+    "category": "category",
+    "experience": "experience",
+    "institution": "institution",
+    "workplace": "workplace",
+    "schedule": "schedule",
+    "phone": "phone",
+}
+
+ADMIN_PROFILE_FIELDS = {
+    "name": "name",
+    "institution": "institution",
+    "address": "address",
+    "phone": "phone",
+    "totalPatients": "total_patients",
+    "activeDoctors": "active_doctors",
+    "activeDistricts": "active_districts",
+    "adminName": "admin_name",
+}
+
+PROFILE_FIELDS_BY_ROLE = {
+    "patient": PATIENT_PROFILE_FIELDS,
+    "doctor": DOCTOR_PROFILE_FIELDS,
+    "admin": ADMIN_PROFILE_FIELDS,
+}
+
 
 def home_view(request):
     frontend_index = Path(__file__).resolve().parents[3] / "frontend" / "index-2.html"
@@ -27,9 +67,10 @@ def home_view(request):
 
 
 def build_user_data(user):
+    role_name = ROLE_NAMES.get(user.role, user.get_role_display())
     data = {
-        "roleName": user.get_role_display(),
-        "title": f"Личный кабинет ({user.get_role_display()})",
+        "roleName": role_name,
+        "title": f"Личный кабинет ({role_name})",
         "name": user.name,
         "iin": user.iin,
     }
@@ -49,23 +90,35 @@ def build_user_data(user):
     elif user.role == "doctor":
         data.update({
             "specialization": user.specialization,
+            "category": user.category,
             "experience": user.experience,
+            "institution": user.institution,
             "workplace": user.workplace,
             "schedule": user.schedule,
+            "phone": user.phone,
         })
     elif user.role == "admin":
         data.update({
             "institution": user.institution,
             "address": user.address,
-            "stats": {
-                "totalPatients": "В базе данных SQLite",
-                "activeDoctors": "Синхронизировано",
-                "activeDistricts": "10",
-                "aiConsultationsToday": "1",
-            },
+            "phone": user.phone,
+            "totalPatients": user.total_patients,
+            "activeDoctors": user.active_doctors,
+            "activeDistricts": user.active_districts,
+            "adminName": user.admin_name,
         })
 
     return data
+
+
+def validate_role_and_iin(role, iin):
+    if role not in PROFILE_FIELDS_BY_ROLE:
+        return "Выберите корректную роль."
+    if not iin:
+        return "Введите ИИН или служебный ID."
+    if len(iin) != 12 or not iin.isdigit():
+        return "Введите ИИН / служебный ID ровно из 12 цифр."
+    return None
 
 
 @csrf_exempt
@@ -79,10 +132,9 @@ def login_view(request):
         iin = data.get("iin", "")
         password = data.get("password", "")
 
-        if not role or not iin:
-            return JsonResponse({"error": "Заполните роль и ИИН"}, status=400)
-        if len(iin) != 12 or not iin.isdigit():
-            return JsonResponse({"error": "Введите ИИН ровно из 12 цифр"}, status=400)
+        validation_error = validate_role_and_iin(role, iin)
+        if validation_error:
+            return JsonResponse({"error": validation_error}, status=400)
 
         user = MedicalUser.objects.filter(iin=iin).first()
 
@@ -90,13 +142,13 @@ def login_view(request):
             if user.password and user.password != password:
                 return JsonResponse({"error": "Неверный пароль"}, status=400)
             if user.role != role:
-                return JsonResponse({"error": "Этот ИИН зарегистрирован с другой ролью"}, status=400)
+                return JsonResponse({"error": "Этот ИИН / ID зарегистрирован с другой ролью"}, status=400)
         else:
             user = MedicalUser.objects.create(
                 role=role,
                 iin=iin,
                 password=password,
-                name="Новый пациент" if role == "patient" else "Новый пользователь",
+                name=DEFAULT_NAMES.get(role, "Новый пользователь"),
             )
 
         return JsonResponse({"success": True, "user_data": build_user_data(user)})
@@ -116,20 +168,24 @@ def save_profile_view(request):
         iin = data.get("iin", "")
         profile = data.get("profile", {})
 
-        if role != "patient":
-            return JsonResponse({"error": "Сохранение настроено для профиля пациента"}, status=400)
-        if len(iin) != 12 or not iin.isdigit():
-            return JsonResponse({"error": "Введите ИИН ровно из 12 цифр"}, status=400)
+        validation_error = validate_role_and_iin(role, iin)
+        if validation_error:
+            return JsonResponse({"error": validation_error}, status=400)
 
+        profile_fields = PROFILE_FIELDS_BY_ROLE[role]
         user, _ = MedicalUser.objects.get_or_create(
             iin=iin,
-            defaults={"role": "patient", "password": "", "name": "Новый пациент"},
+            defaults={
+                "role": role,
+                "password": "",
+                "name": DEFAULT_NAMES.get(role, "Новый пользователь"),
+            },
         )
 
         if user.role != role:
-            return JsonResponse({"error": "Этот ИИН зарегистрирован с другой ролью"}, status=400)
+            return JsonResponse({"error": "Этот ИИН / ID зарегистрирован с другой ролью"}, status=400)
 
-        for frontend_key, model_field in PATIENT_PROFILE_FIELDS.items():
+        for frontend_key, model_field in profile_fields.items():
             if frontend_key in profile:
                 setattr(user, model_field, profile.get(frontend_key) or "")
 

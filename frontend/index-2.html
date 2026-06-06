@@ -973,7 +973,21 @@
     // Show/hide IIN field based on role
     document.getElementById('roleSelect').addEventListener('change', function() {
         const iinGroup = document.getElementById('iinGroup');
-        iinGroup.style.display = this.value === 'patient' ? 'block' : 'none';
+        const iinLabel = iinGroup.querySelector('label');
+        const iinInput = document.getElementById('iinInput');
+        
+        if (this.value) {
+            iinGroup.style.display = 'block';
+            if (this.value === 'patient') {
+                iinLabel.textContent = 'ИИН (12 цифр)';
+                iinInput.placeholder = 'Введите ваш ИИН';
+            } else {
+                iinLabel.textContent = 'Служебный ID (12 цифр)';
+                iinInput.placeholder = 'Введите ваш ID';
+            }
+        } else {
+            iinGroup.style.display = 'none';
+        }
     });
 
     function switchPage(pageId) {
@@ -997,8 +1011,8 @@
             errorDiv.textContent = 'Пожалуйста, выберите роль.';
             errorDiv.style.display = 'block'; return;
         }
-        if (role === 'patient' && iin.length !== 12) {
-            errorDiv.textContent = 'Введите ИИН — ровно 12 цифр.';
+        if (iin.length !== 12) {
+            errorDiv.textContent = 'Введите 12 цифр идентификатора.';
             errorDiv.style.display = 'block'; return;
         }
 
